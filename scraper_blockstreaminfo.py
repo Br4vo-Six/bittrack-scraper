@@ -2,9 +2,10 @@ import requests
 import json
 import time
 
+
 def fetchTx(tx_id):
     # Base URL for the API
-    base_url = 'https://blockchain.info/rawtx/'
+    base_url = 'https://blockstream.info/api/tx/'
     
     # Complete URL with the transaction ID
     url = f'{base_url}{tx_id}'
@@ -28,7 +29,7 @@ def fetchTx(tx_id):
 
 def fetchAddrHist(addr):
     # Base URL for the API
-    base_url = 'https://blockchain.info/rawaddr/'
+    base_url = 'https://blockstream.info/api/address/'
     
     # Complete URL with the Bitcoin address
     url = f'{base_url}{addr}'
@@ -41,7 +42,14 @@ def fetchAddrHist(addr):
         if response.status_code == 200:
             # Parse the response content as JSON
             json_data = response.json()
-            return json_data
+            url = f'{base_url}{addr}/txs'
+            response = requests.get(url)
+            if response.status_code == 200:
+                json_data['txs'] = response.json()
+                return json_data
+            else:
+                print(f"Request failed with status code: {response.status_code}")
+                return None
         else:
             print(f"Request failed with status code: {response.status_code}")
             return None

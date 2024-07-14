@@ -1,5 +1,6 @@
 import requests
 import json
+import time
 
 def fetchTx(tx_id, rpc_url, rpc_user, rpc_password):
     # Create the JSON-RPC payload to get transaction details
@@ -44,8 +45,18 @@ if __name__ == "__main__":
     rpc_user = 'user'
     rpc_password = 'Empress_3'
     tx_id = '5658a925ca3a5528353ae9324263d688c8b5932eac4261dae035bf948deb0f8d'
+    start_time = time.time()
     res = fetchTx(tx_id, url, rpc_user, rpc_password)
+    end_time = time.time()
+    duration = end_time - start_time
     print(res)  
+    print(f'Results fetched in {duration} s')
+    print("-----------------------")
     addr = '3AujBhj7bAFgGVb8gYccUDpWcAYYUJ37WY'
+    start_time = time.time()
     res = fetchAddrHist(addr, url, rpc_user, rpc_password)
+    end_time = time.time()
+    duration = end_time - start_time
     print(res)  
+    print(f'Results fetched in {duration} s')
+    print("-----------------------")
