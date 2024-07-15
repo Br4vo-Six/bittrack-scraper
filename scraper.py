@@ -62,22 +62,23 @@ if __name__ == "__main__":
     df = preprocess_csv()
     workers = int(os.getenv('NUM_WORKER'))
     proxies = fetch_proxies.load_proxies(os.path.join(os.getcwd(), 'proxies_list.txt'))
-    results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        df_chunks = df[df['tried'] == False].head(workers)
-        futures = [executor.submit(make_request, int(df_chunks.iloc[i]['txId']), df_chunks.iloc[i]['transaction'], proxies) for i in range(workers)]
-        for future in concurrent.futures.as_completed(futures):
-            filename = f"{future.result()['tx_hash']}_{future.result()['source']}.json"
-            filepath = os.path.join(os.getenv('OUTPUT_DIR'), filename)
-            with open(filepath, 'w') as json_file:
-                json.dump(future.result(), json_file)
-            results.append(future.result())
-            
-    csv_file = os.path.join(os.getenv('OUTPUT_DIR'), os.getenv('TXS_LIST'))
-    for res in results:
-        df.loc[df['txId'] == res['tx_id'], 'scraped'] = res['scraped']
-        df.loc[df['txId'] == res['tx_id'], 'proxyAddr'] = res['proxyAddr']
-        df.loc[df['txId'] == res['tx_id'], 'tried'] = True
-        df.loc[df['txId'] == res['tx_id'], 'source'] = res['source']
-        df.loc[df['txId'] == res['tx_id'], 'last_updated'] = time.time()
-    df.to_csv(csv_file, index=False)
+    for i in range(int(os.getenv('MAX_EPOCH'))):
+        results = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            df_chunks = df[df['tried'] == False].head(workers)
+            futures = [executor.submit(make_request, int(df_chunks.iloc[i]['txId']), df_chunks.iloc[i]['transaction'], proxies) for i in range(workers)]
+            for future in concurrent.futures.as_completed(futures):
+                filename = f"{future.result()['tx_hash']}_{future.result()['source']}.json"
+                filepath = os.path.join(os.getenv('OUTPUT_DIR'), filename)
+                with open(filepath, 'w') as json_file:
+                    json.dump(future.result(), json_file)
+                results.append(future.result())
+                
+        csv_file = os.path.join(os.getenv('OUTPUT_DIR'), os.getenv('TXS_LIST'))
+        for res in results:
+            df.loc[df['txId'] == res['tx_id'], 'scraped'] = res['scraped']
+            df.loc[df['txId'] == res['tx_id'], 'proxyAddr'] = res['proxyAddr']
+            df.loc[df['txId'] == res['tx_id'], 'tried'] = True
+            df.loc[df['txId'] == res['tx_id'], 'source'] = res['source']
+            df.loc[df['txId'] == res['tx_id'], 'last_updated'] = time.time()
+        df.to_csv(csv_file, index=False)
