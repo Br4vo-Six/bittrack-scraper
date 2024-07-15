@@ -8,10 +8,9 @@ def fetchTx(tx_id, proxy=None):
     
     # Complete URL with the transaction ID
     url = f'{base_url}{tx_id}'
-    
     try:
         # Send the GET request
-        response = requests.get(url)
+        response = requests.get(url, proxies=proxy)
         
         # Check if the request was successful
         if response.status_code == 200:
