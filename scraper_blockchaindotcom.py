@@ -2,7 +2,7 @@ import requests
 import json
 import time
 
-def fetchTx(tx_id):
+def fetchTx(tx_id, proxy=None):
     # Base URL for the API
     base_url = 'https://blockchain.info/rawtx/'
     
@@ -26,7 +26,7 @@ def fetchTx(tx_id):
         return None
 
 
-def fetchAddrHist(addr):
+def fetchAddrHist(addr, proxy=None):
     # Base URL for the API
     base_url = 'https://blockchain.info/rawaddr/'
     
@@ -68,4 +68,3 @@ if __name__ == "__main__":
         print(address_details)
         print(f'Results fetched in {duration} s')
         print("-----------------------")
-    
