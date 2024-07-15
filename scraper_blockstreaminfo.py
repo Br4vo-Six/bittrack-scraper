@@ -3,7 +3,7 @@ import json
 import time
 
 
-def fetchTx(tx_id):
+def fetchTx(tx_id, proxies):
     # Base URL for the API
     base_url = 'https://blockstream.info/api/tx/'
     
@@ -12,7 +12,7 @@ def fetchTx(tx_id):
     
     try:
         # Send the GET request
-        response = requests.get(url)
+        response = requests.get(url, proxies=proxies)
         
         # Check if the request was successful
         if response.status_code == 200:
