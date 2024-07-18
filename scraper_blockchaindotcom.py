@@ -1,20 +1,19 @@
 import requests
 import json
 import time
+import os
+from dotenv import load_dotenv
 
 def fetchTx(tx_id, proxy=None):
-    # Base URL for the API
+    load_dotenv()
     base_url = 'https://blockchain.info/rawtx/'
     
     # Complete URL with the transaction ID
     url = f'{base_url}{tx_id}'
     try:
         # Send the GET request
-        response = requests.get(url, proxies=proxy)
-        
-        # Check if the request was successful
+        response = requests.get(url, proxies=proxy, timeout=int(os.getenv('MAX_TIMEOUT')), verify=False)
         if response.status_code == 200:
-            # Parse the response content as JSON
             json_data = response.json()
             return json_data
         else:

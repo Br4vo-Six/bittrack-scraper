@@ -34,7 +34,7 @@ def fetchAddrHist(addr, proxy=None):
     url = f'{base_url}{addr}'
     
     try:
-        response = requests.get(url, proxies=proxy,timeout=int(os.getenv('MAX_TIMEOUT')))
+        response = requests.get(url, proxies=proxy,timeout=int(os.getenv('MAX_TIMEOUT')), verify=False)
         
         # Check if the request was successful
         if response.status_code == 200:
