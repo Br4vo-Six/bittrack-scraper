@@ -7,14 +7,12 @@ def fetchTx(tx_id, proxy=None):
     base_url = 'https://api.blockcypher.com/v1/btc/main/txs/'
     
     # Complete URL with the transaction ID
-    url = f'{base_url}{tx_id}'
+    url = f'{base_url}{tx_id}?limit=24385'
+    print(url)
     try:
         # Send the GET request
         response = requests.get(url, proxies=proxy)
-        
-        # Check if the request was successful
         if response.status_code == 200:
-            # Parse the response content as JSON
             json_data = response.json()
             return json_data
         else:
@@ -34,7 +32,7 @@ def fetchAddrHist(addr, proxy=None):
     
     try:
         # Send the GET request
-        response = requests.get(url)
+        response = requests.get(url, proxies=proxy)
         
         # Check if the request was successful
         if response.status_code == 200:
