@@ -1,8 +1,11 @@
 import requests
 import json
 import time
+import os
+from dotenv import load_dotenv
 
 def fetchTx(tx_id, proxy=None):
+    load_dotenv()
     # Base URL for the API
     base_url = 'https://api.blockcypher.com/v1/btc/main/txs/'
     
@@ -11,7 +14,7 @@ def fetchTx(tx_id, proxy=None):
     print(url)
     try:
         # Send the GET request
-        response = requests.get(url, proxies=proxy)
+        response = requests.get(url, proxies=proxy, timeout=int(os.getenv('MAX_TIMEOUT')))
         if response.status_code == 200:
             json_data = response.json()
             return json_data
@@ -24,6 +27,7 @@ def fetchTx(tx_id, proxy=None):
 
 
 def fetchAddrHist(addr, proxy=None):
+    load_dotenv()
     # Base URL for the API
     base_url = 'https://api.blockcypher.com/v1/btc/main/addrs/'
     
@@ -31,8 +35,7 @@ def fetchAddrHist(addr, proxy=None):
     url = f'{base_url}{addr}'
     
     try:
-        # Send the GET request
-        response = requests.get(url, proxies=proxy)
+        response = requests.get(url, proxies=proxy,timeout=int(os.getenv('MAX_TIMEOUT')))
         
         # Check if the request was successful
         if response.status_code == 200:

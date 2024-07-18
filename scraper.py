@@ -81,36 +81,31 @@ def make_request_randomized(tx_id, tx_hash, proxies):
 
 def make_request(tx_id, tx_hash, proxy):
     source = os.getenv('SOURCE')
-    tries = 0
-    while True:
-        if tries > int(os.getenv('MAX_TRIES')):
-            return {'tx_id': tx_id, 'tx_hash': tx_hash, 'scraped': False, 'proxyAddr': '', 'res': {}, 'source': source}
-        
-        if proxy:
-            proxy_dict = {
-                'http': f'http://{proxy}',
-            }
+    if proxy:
+        proxy_dict = {
+            'http': f'http://{proxy}',
+        }
+    else:
+        proxy_dict = None
+    try:
+        if source == 'BLOCKCHAINDOTCOM':
+            res_json = scraper_blockchaindotcom.fetchTx(tx_hash, proxy_dict)
+        elif source == 'ELECTRUMRPC':
+            res_json = scraper_electrumrpc.fetchTx(tx_hash, os.getenv('RPC_URL'), os.getenv('RPC_USER'), os.getenv('RPC_PASSWORD'))
+        elif source == 'BLOCKSTREAM':
+            res_json = scraper_blockstreaminfo.fetchTx(tx_hash, proxy_dict)
+        elif source == 'BLOCKCYPHER':
+            res_json = scraper_blockcypher.fetchTx(tx_hash, proxy_dict)
+        if res_json:
+            print(f"{tx_id} - Request success using proxy: {proxy}")
+            return {'tx_id': tx_id, 'tx_hash': tx_hash,'scraped': True, 'proxyAddr': proxy, 'res': res_json, 'source': source}
         else:
-            proxy_dict = None
-        try:
-            if source == 'BLOCKCHAINDOTCOM':
-                res_json = scraper_blockchaindotcom.fetchTx(tx_hash, proxy_dict)
-            elif source == 'ELECTRUMRPC':
-                res_json = scraper_electrumrpc.fetchTx(tx_hash, os.getenv('RPC_URL'), os.getenv('RPC_USER'), os.getenv('RPC_PASSWORD'))
-            elif source == 'BLOCKSTREAM':
-                res_json = scraper_blockstreaminfo.fetchTx(tx_hash, proxy_dict)
-            elif source == 'BLOCKCYPHER':
-                res_json = scraper_blockcypher.fetchTx(tx_hash, proxy_dict)
-            if res_json:
-                print(f"{tx_id} - Request success using proxy: {proxy}")
-                return {'tx_id': tx_id, 'tx_hash': tx_hash,'scraped': True, 'proxyAddr': proxy, 'res': res_json, 'source': source}
-            else:
-                print(f"{tx_id} - Request failed using proxy: {proxy}") 
-                tries += 1
-        except requests.exceptions.RequestException as e:
-            print(f"{tx_id} - Request failed using proxy: {proxy}")
-            print(e)
-            tries += 1
+            print(f"{tx_id} - Request failed using proxy: {proxy}") 
+            return {'tx_id': tx_id, 'tx_hash': tx_hash, 'scraped': False, 'proxyAddr': '', 'res': {}, 'source': source}
+    except requests.exceptions.RequestException as e:
+        print(f"{tx_id} - Request failed using proxy: {proxy}")
+        return {'tx_id': tx_id, 'tx_hash': tx_hash, 'scraped': False, 'proxyAddr': '', 'res': {}, 'source': source}
+
 
 def divide_array(l, m, n=0):
     subarrays = [l[i:i+m] for i in range(0, len(l), m)]
@@ -154,25 +149,24 @@ if __name__ == "__main__":
         api_rate = int(os.getenv('API_RATE'))
         idx = int(os.getenv('DATA_START'))
         max_epoch = int(os.getenv('MAX_EPOCH'))
-        proxies = proxies[start_proxy:max_epoch//api_rate]
-        df = df[df['tried'] == False].iloc[idx:idx + max_epoch]
-        df_index = df['txId'].values
+        proxies = proxies[start_proxy:start_proxy+(max_epoch//api_rate)]
+        df_index = df.loc[df['tried'] == False, 'txId'].iloc[idx:idx + max_epoch].values
         df_index = divide_array(df_index, api_rate, workers)
         w = 0
         for proxy_reqs in df_index:
+            print(proxies)
             sel_proxy = proxies[w]
             for chunk in proxy_reqs:
                 results = []
-                print("DF_INDEX", df_index)
-                print("CHUNK", chunk)
                 with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-                    futures = [executor.submit(make_request, int(chunk[i]), df.loc[df['txId'] == chunk[i], 'transaction'].values[0],None) for i in range(workers)]
+                    futures = [executor.submit(make_request, int(chunk[i]), df.loc[df['txId'] == chunk[i], 'transaction'].values[0],sel_proxy) for i in range(workers)]
                     for future in concurrent.futures.as_completed(futures):
                         filename = f"{future.result()['tx_hash']}_{future.result()['source']}.json"
                         filepath = os.path.join(os.getenv('OUTPUT_DIR'), filename)
                         with open(filepath, 'w') as json_file:
                             json.dump(future.result(), json_file)
                         results.append(future.result())
+                        print(len(results))
                 
                 csv_file = os.path.join(os.getenv('OUTPUT_DIR'), os.getenv('TXS_LIST'))
                 for res in results:
