@@ -57,7 +57,7 @@ def make_request_randomized(tx_id, tx_hash, proxies):
             return {'tx_id': tx_id, 'tx_hash': tx_hash, 'scraped': False, 'proxyAddr': '', 'res': {}, 'source': source}
         proxy = random.choice(proxies)
         proxy_dict = {
-            'http': f'http://{proxy}',
+            'https': f'socks5://{proxy}',
         }
         try:
             if source == 'BLOCKCHAINDOTCOM':
@@ -76,15 +76,49 @@ def make_request_randomized(tx_id, tx_hash, proxies):
                 tries += 1
         except requests.exceptions.RequestException as e:
             print(f"{tx_id} - Request failed using proxy: {proxy}")
-            print(e)
             tries += 1
+
+def make_request_sequential(tx_id, tx_hash, proxies):
+    source = os.getenv('SOURCE')
+    tries = 0
+    proxy_c = 0
+    while True:
+        if tries > int(os.getenv('MAX_TRIES')):
+            return {'tx_id': tx_id, 'tx_hash': tx_hash, 'scraped': False, 'proxyAddr': '', 'res': {}, 'source': source}
+        proxy = proxies[proxy_c]
+        proxy_dict = {
+            'https': f'socks5h://{proxy}',
+        }
+        try:
+            if source == 'BLOCKCHAINDOTCOM':
+                res_json = scraper_blockchaindotcom.fetchTx(tx_hash, proxy_dict)
+            elif source == 'ELECTRUMRPC':
+                res_json = scraper_electrumrpc.fetchTx(tx_hash, os.getenv('RPC_URL'), os.getenv('RPC_USER'), os.getenv('RPC_PASSWORD'))
+            elif source == 'BLOCKSTREAM':
+                res_json = scraper_blockstreaminfo.fetchTx(tx_hash, proxy_dict)
+            elif source == 'BLOCKCYPHER':
+                res_json = scraper_blockcypher.fetchTx(tx_hash, proxy_dict)
+            if res_json:
+                print(f"{tx_id} - Request success using proxy: {proxy}")
+                return {'tx_id': tx_id, 'tx_hash': tx_hash,'scraped': True, 'proxyAddr': proxy, 'res': res_json, 'source': source}
+            else:
+                print(f"{tx_id} - Request failed using proxy: {proxy}") 
+                proxy_c += 1
+                if proxy_c >= len(proxies):
+                    proxy_c = 0
+                tries += 1
+        except requests.exceptions.RequestException as e:
+            print(f"{tx_id} - Request failed using proxy: {proxy}")
+            tries += 1
+            if proxy_c >= len(proxies):
+                proxy_c = 0
 
 def make_request(http_proxy, tx_id, tx_hash, proxy):
     source = os.getenv('SOURCE')
     if proxy:
         if not http_proxy:
             proxy_dict = {
-                'http': f'http://{proxy}',
+                'https': f'https://{proxy}',
             }
         else:
             proxy_dict = {
@@ -125,14 +159,16 @@ if __name__ == "__main__":
     load_dotenv()
     # reset_csv()
     df = preprocess_csv()
+    df_success = df[df['scraped'] == True]
+    print(len(df_success))
     workers = int(os.getenv('NUM_WORKER'))
-    proxies = fetch_proxies.load_proxies(os.path.join(os.getcwd(), 'http_proxies.txt'))
+    proxies = fetch_proxies.load_proxies(os.path.join(os.getcwd(), 'tested_proxies.txt'))
     scraping_scheme = os.getenv('SCRAPING_SCHEME').lower()
     if scraping_scheme == 'randomized':
-        for i in range(int(os.getenv('MAX_EPOCH')/workers)):
+        for i in range(int(os.getenv('MAX_EPOCH'))//workers):
             results = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-                df_chunks = df[df['tried'] == False].head(workers)
+                df_chunks = df[df['scraped'] == False].head(workers)
                 futures = [executor.submit(make_request_randomized, int(df_chunks.iloc[i]['txId']), df_chunks.iloc[i]['transaction'], proxies) for i in range(workers)]
                 for future in concurrent.futures.as_completed(futures):
                     filename = f"{future.result()['tx_hash']}_{future.result()['source']}.json"
@@ -159,7 +195,6 @@ if __name__ == "__main__":
         df_index = divide_array(df_index, api_rate, workers)
         w = 0
         for proxy_reqs in df_index:
-            print(proxies)
             sel_proxy = proxies[w]
             for chunk in proxy_reqs:
                 results = []
@@ -171,7 +206,6 @@ if __name__ == "__main__":
                         with open(filepath, 'w') as json_file:
                             json.dump(future.result(), json_file)
                         results.append(future.result())
-                        print(len(results))
                 
                 csv_file = os.path.join(os.getenv('OUTPUT_DIR'), os.getenv('TXS_LIST'))
                 for res in results:

@@ -11,10 +11,9 @@ def fetchTx(tx_id, proxy=None):
     
     # Complete URL with the transaction ID
     url = f'{base_url}{tx_id}?limit=24385'
-    print(url)
     try:
         # Send the GET request
-        response = requests.get(url, proxies=proxy, timeout=int(os.getenv('MAX_TIMEOUT')))
+        response = requests.get(url, proxies=proxy, timeout=int(os.getenv('MAX_TIMEOUT')), verify=False)
         if response.status_code == 200:
             json_data = response.json()
             return json_data
@@ -43,10 +42,8 @@ def fetchAddrHist(addr, proxy=None):
             json_data = response.json()
             return json_data
         else:
-            print(f"Request failed with status code: {response.status_code}")
             return None
     except requests.exceptions.RequestException as e:
-        print(f"An error occurred: {e}")
         return None
 
 if __name__ == "__main__":
