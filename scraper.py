@@ -150,7 +150,7 @@ if __name__ == "__main__":
         idx = int(os.getenv('DATA_START'))
         max_epoch = int(os.getenv('MAX_EPOCH'))
         proxies = proxies[start_proxy:start_proxy+(max_epoch//api_rate)]
-        df_index = df.loc[df['tried'] == False, 'txId'].iloc[idx:idx + max_epoch].values
+        df_index = df.loc[df['scraped'] == False, 'txId'].iloc[idx:idx + max_epoch].values
         df_index = divide_array(df_index, api_rate, workers)
         w = 0
         for proxy_reqs in df_index:
