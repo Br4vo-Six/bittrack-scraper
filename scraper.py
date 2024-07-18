@@ -79,12 +79,17 @@ def make_request_randomized(tx_id, tx_hash, proxies):
             print(e)
             tries += 1
 
-def make_request(tx_id, tx_hash, proxy):
+def make_request(http_proxy, tx_id, tx_hash, proxy):
     source = os.getenv('SOURCE')
     if proxy:
-        proxy_dict = {
-            'http': f'http://{proxy}',
-        }
+        if not http_proxy:
+            proxy_dict = {
+                'http': f'http://{proxy}',
+            }
+        else:
+            proxy_dict = {
+                'http': f'{proxy}',
+            }
     else:
         proxy_dict = None
     try:
@@ -121,7 +126,7 @@ if __name__ == "__main__":
     # reset_csv()
     df = preprocess_csv()
     workers = int(os.getenv('NUM_WORKER'))
-    proxies = fetch_proxies.load_proxies(os.path.join(os.getcwd(), 'proxies_list.txt'))
+    proxies = fetch_proxies.load_proxies(os.path.join(os.getcwd(), 'http_proxies.txt'))
     scraping_scheme = os.getenv('SCRAPING_SCHEME').lower()
     if scraping_scheme == 'randomized':
         for i in range(int(os.getenv('MAX_EPOCH')/workers)):
@@ -159,7 +164,7 @@ if __name__ == "__main__":
             for chunk in proxy_reqs:
                 results = []
                 with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-                    futures = [executor.submit(make_request, int(chunk[i]), df.loc[df['txId'] == chunk[i], 'transaction'].values[0],sel_proxy) for i in range(workers)]
+                    futures = [executor.submit(make_request, True, int(chunk[i]), df.loc[df['txId'] == chunk[i], 'transaction'].values[0], sel_proxy) for i in range(workers)]
                     for future in concurrent.futures.as_completed(futures):
                         filename = f"{future.result()['tx_hash']}_{future.result()['source']}.json"
                         filepath = os.path.join(os.getenv('OUTPUT_DIR'), filename)
