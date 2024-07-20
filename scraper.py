@@ -36,18 +36,11 @@ def reset_csv():
     load_dotenv()
     file_path = os.path.join(os.getenv('OUTPUT_DIR'), os.getenv('TXS_LIST'))
     dataset = pd.read_csv(file_path)
-    if 'scraped' in dataset.columns:
-        dataset['scraped'] = False
-    if 'proxyAddr' in dataset.columns:
-        dataset['proxyAddr'] = ''
-    if 'tried' in dataset.columns:
-        dataset['tried'] = False
-    if 'source' in dataset.columns:
-        dataset['source'] = ''
-    if 'last_updated' in dataset.columns:
-        dataset['last_updated'] = None
-    dataset.to_csv(file_path, index=False)
-    return dataset
+    df = dataset.loc[dataset['source'] == 'BLOCKCHAINDOTCOM']
+    if 'scraped' in df.columns:
+        df['scraped'] = False
+    df.to_csv(file_path, index=False)
+    return df
 
 def make_request_randomized(tx_id, tx_hash, proxies):
     source = os.getenv('SOURCE')
@@ -55,10 +48,14 @@ def make_request_randomized(tx_id, tx_hash, proxies):
     while True:
         if tries > int(os.getenv('MAX_TRIES')):
             return {'tx_id': tx_id, 'tx_hash': tx_hash, 'scraped': False, 'proxyAddr': '', 'res': {}, 'source': source}
-        proxy = random.choice(proxies)
-        proxy_dict = {
-            'https': f'socks5://{proxy}',
-        }
+        if proxies:
+            proxy = random.choice(proxies)
+            proxy_dict = {
+                'https': f'socks5://{proxy}',
+            }
+        else:
+            proxy = None
+            proxy_dict = None
         try:
             if source == 'BLOCKCHAINDOTCOM':
                 res_json = scraper_blockchaindotcom.fetchTx(tx_hash, proxy_dict)
@@ -72,10 +69,8 @@ def make_request_randomized(tx_id, tx_hash, proxies):
                 print(f"{tx_id} - Request success using proxy: {proxy}")
                 return {'tx_id': tx_id, 'tx_hash': tx_hash,'scraped': True, 'proxyAddr': proxy, 'res': res_json, 'source': source}
             else:
-                print(f"{tx_id} - Request failed using proxy: {proxy}") 
                 tries += 1
         except requests.exceptions.RequestException as e:
-            print(f"{tx_id} - Request failed using proxy: {proxy}")
             tries += 1
 
 def make_request_sequential(tx_id, tx_hash, proxies):
@@ -87,7 +82,7 @@ def make_request_sequential(tx_id, tx_hash, proxies):
             return {'tx_id': tx_id, 'tx_hash': tx_hash, 'scraped': False, 'proxyAddr': '', 'res': {}, 'source': source}
         proxy = proxies[proxy_c]
         proxy_dict = {
-            'https': f'socks5h://{proxy}',
+            'https': f'socks5://{proxy}',
         }
         try:
             if source == 'BLOCKCHAINDOTCOM':
@@ -136,10 +131,10 @@ def make_request(http_proxy, tx_id, tx_hash, proxy):
         elif source == 'BLOCKCYPHER':
             res_json = scraper_blockcypher.fetchTx(tx_hash, proxy_dict)
         if res_json:
-            print(f"{tx_id} - Request success using proxy: {proxy}")
+            # print(f"{tx_id} - Request success using proxy: {proxy}")
             return {'tx_id': tx_id, 'tx_hash': tx_hash,'scraped': True, 'proxyAddr': proxy, 'res': res_json, 'source': source}
         else:
-            print(f"{tx_id} - Request failed using proxy: {proxy}") 
+            # print(f"{tx_id} - Request failed using proxy: {proxy}") 
             return {'tx_id': tx_id, 'tx_hash': tx_hash, 'scraped': False, 'proxyAddr': '', 'res': {}, 'source': source}
     except requests.exceptions.RequestException as e:
         print(f"{tx_id} - Request failed using proxy: {proxy}")
@@ -185,6 +180,7 @@ if __name__ == "__main__":
                 df.loc[df['txId'] == res['tx_id'], 'source'] = res['source']
                 df.loc[df['txId'] == res['tx_id'], 'last_updated'] = time.time()
             df.to_csv(csv_file, index=False)
+            print(f"Scraped - {len(df[df['scraped'] == True])}/{len(df)}")
     elif scraping_scheme == 'max_rate':
         start_proxy = int(os.getenv('PROXY_START'))
         api_rate = int(os.getenv('API_RATE'))

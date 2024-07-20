@@ -18,10 +18,8 @@ def fetchTx(tx_id, proxy=None):
             json_data = response.json()
             return json_data
         else:
-            print(f"Request failed with status code: {response.status_code}")
             return None
     except requests.exceptions.RequestException as e:
-        print(f"An error occurred: {e}")
         return None
 
 
