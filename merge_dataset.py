@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 import json
 
-def merge(directory, output_file):
+def merge(directory, output_file, max_input=None):
     merged_data = []
 
     # Iterate over all files in the directory
@@ -23,6 +23,9 @@ def merge(directory, output_file):
             print(f"File done: {i}")
             os.system( 'cls' )
             i+=1
+            if max_input != None:
+                if i == max_input:
+                    break
 
     # Write the merged data to the output file
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -33,4 +36,4 @@ def merge(directory, output_file):
 if __name__ == "__main__":
     load_dotenv()
     file_path = os.path.join(os.getenv('OUTPUT_DIR'), "elliptic++_txs.json")
-    merge(os.getenv('OUTPUT_DIR'), file_path)
+    merge(os.getenv('OUTPUT_DIR'), file_path, max_input=20000)
