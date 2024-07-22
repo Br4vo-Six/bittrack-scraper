@@ -164,7 +164,7 @@ if __name__ == "__main__":
             results = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
                 df_chunks = df[df['scraped'] == False].head(workers)
-                futures = [executor.submit(make_request_randomized, int(df_chunks.iloc[i]['txId']), df_chunks.iloc[i]['transaction'], proxies) for i in range(workers)]
+                futures = [executor.submit(make_request_randomized, int(df_chunks.iloc[i]['txId']), df_chunks.iloc[i]['transaction'], proxies) for i in range(min(workers, len(df_chunks)))]
                 for future in concurrent.futures.as_completed(futures):
                     filename = f"{future.result()['tx_hash']}_{future.result()['source']}.json"
                     filepath = os.path.join(os.getenv('OUTPUT_DIR'), filename)
